@@ -1,0 +1,6 @@
+{
+  "summary": "Implementation plan for North Poblacion CleanTrack, an Android application supporting Barangay Solid Waste Collection Management across all 18 Puroks of North Poblacion, Maramag, Bukidnon. Features role-based views (Administrator, Collection Worker, Resident) with a demonstration switcher, Firestore cloud synchronization, scheduling, collection tracking, complaint reporting, and in-app notification center.",
+  "updatedAt": "2026-10-14T11:51:13.333395497Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

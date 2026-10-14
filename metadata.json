@@ -1,0 +1,6 @@
+{
+  "name": "North Poblacion CleanTrack",
+  "description": "Barangay Solid Waste Collection Management and Household Notification System for North Poblacion, Maramag, Bukidnon",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

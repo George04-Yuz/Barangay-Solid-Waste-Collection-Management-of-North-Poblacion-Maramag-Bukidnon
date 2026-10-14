@@ -163,6 +163,6 @@ fun CleanTrackApp(viewModel: CleanTrackViewModel = viewModel()) {
 
     // About BSIT Capstone Project Dialog
     if (showAboutDialog) {
-        AboutProjectDialog(onDismiss = { showAboutDialog = false })
+        AboutProjectDialog(viewModel = viewModel, onDismiss = { showAboutDialog = false })
     }
 }

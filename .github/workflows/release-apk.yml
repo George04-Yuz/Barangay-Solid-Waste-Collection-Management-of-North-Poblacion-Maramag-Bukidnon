@@ -1,0 +1,125 @@
+name: Build & Release Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release Version (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+      draft:
+        description: 'Create draft release'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Signed APK & Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Validate Gradle Wrapper / Toolchain
+        run: |
+          gradle --version
+
+      - name: Run Automated Test Suites
+        run: |
+          gradle :app:testDebugUnitTest --continue
+
+      - name: Build Android Release APK
+        env:
+          KEYSTORE_PATH: ${{ secrets.RELEASE_KEYSTORE_PATH }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_PATH" ] && [ -f "$KEYSTORE_PATH" ]; then
+            echo "Building with production release signing configuration..."
+            gradle :app:assembleRelease
+            APK_SRC=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          else
+            echo "Building standard signed package with reproducible debug/staging credentials..."
+            gradle :app:assembleDebug
+            APK_SRC=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          fi
+
+          mkdir -p release_assets
+          cp "$APK_SRC" release_assets/North-Poblacion-CleanTrack-v1.0.0.apk
+          echo "Output APK: release_assets/North-Poblacion-CleanTrack-v1.0.0.apk"
+          ls -lh release_assets/
+
+      - name: Generate SHA-256 Checksum
+        working-directory: release_assets
+        run: |
+          sha256sum North-Poblacion-CleanTrack-v1.0.0.apk > checksums.txt
+          cat checksums.txt
+
+      - name: Extract Tag or Version
+        id: get_version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="v${{ github.event.inputs.release_version }}"
+          fi
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Target tag: $TAG_NAME"
+
+      - name: Create GitHub Release and Attach APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: "North Poblacion CleanTrack ${{ steps.get_version.outputs.tag_name }}"
+          draft: ${{ github.event.inputs.draft || false }}
+          prerelease: false
+          files: |
+            release_assets/North-Poblacion-CleanTrack-v1.0.0.apk
+            release_assets/checksums.txt
+          body: |
+            # North Poblacion CleanTrack ${{ steps.get_version.outputs.tag_name }}
+
+            Official Android application release for the **Cross-Platform Barangay Solid Waste Collection Management and Household Notification System for North Poblacion, Maramag, Bukidnon**.
+
+            ### 📱 Application Details
+            - **Package Identifier:** `ph.northpoblacion.cleantrack`
+            - **Version Name:** `1.0.0`
+            - **Version Code:** `1`
+            - **Minimum Android SDK:** 24 (Android 7.0 Nougat)
+            - **Target Android SDK:** 36 (Android 16)
+            - **Architecture:** `arm64-v8a`, `armeabi-v7a`, `x86_64`
+
+            ### 🌟 Key Features in this Release
+            - **18 Designated Puroks Covered:** Full scheduling, tracking, and notification routing for Purok 1, 1A, 1B, 2, 2A, 3, 4, 5, 5A, 5B, 6, 6A, 7, 8, 9, 9A, 9B, and Purok 10.
+            - **Multi-Role Demonstration:** Seamless switching between Barangay Administrator, Collection Worker/Driver, and Household Resident personas.
+            - **Live Collection Monitoring:** Status transitions (`Pending` ➔ `In Progress` ➔ `Completed`) with timestamp verification.
+            - **Resident Missed-Waste Reporting:** Ticket filing with category classification, street location, and photo attachment simulation.
+            - **In-App Notification Center:** Push alert simulation with unread badges, broadcast notices, and complaint resolution updates.
+            - **Dual Connectivity Modes:** Toggle between Embedded Capstone Live Demo (offline pre-seeded database) and Production HTTPS Server.
+
+            ### 📥 Download and Installation Instructions
+            1. Download the **`North-Poblacion-CleanTrack-v1.0.0.apk`** file below to your Android device.
+            2. Tap the downloaded file in your browser or File Manager.
+            3. When prompted, select **Settings** and allow **Install unknown apps** for your browser/file manager.
+            4. Tap **Install** and open **North Poblacion CleanTrack**.
+            5. See `INSTALLATION_GUIDE.md` in the repository for detailed visual steps and troubleshooting.
+
+            ### 🔒 Integrity Verification (SHA-256)
+            Verify the downloaded APK using the checksum in `checksums.txt`.

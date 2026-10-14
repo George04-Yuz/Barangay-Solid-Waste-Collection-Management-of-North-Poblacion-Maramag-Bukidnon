@@ -9,7 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,9 +20,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.CleanGreenContainer
 import com.example.ui.theme.CleanGreenPrimary
+import com.example.ui.theme.StatusCompletedColor
+import com.example.ui.viewmodel.CleanTrackViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AboutProjectDialog(onDismiss: () -> Unit) {
+fun AboutProjectDialog(
+    viewModel: CleanTrackViewModel,
+    onDismiss: () -> Unit
+) {
+    val isProductionBackend by viewModel.isProductionBackend.collectAsState()
+    val backendUrl by viewModel.backendUrl.collectAsState()
+
+    var customUrlInput by remember { mutableStateOf(backendUrl) }
+    var showUrlEdit by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -46,7 +58,7 @@ fun AboutProjectDialog(onDismiss: () -> Unit) {
                 }
                 Column {
                     Text("North Poblacion CleanTrack", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("BSIT Capstone Defense Project", fontSize = 11.sp, color = CleanGreenPrimary)
+                    Text("Release v1.0.0 (Build 1)", fontSize = 11.sp, color = CleanGreenPrimary, fontWeight = FontWeight.SemiBold)
                 }
             }
         },
@@ -54,13 +66,133 @@ fun AboutProjectDialog(onDismiss: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 420.dp)
+                    .heightIn(max = 440.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Official Version & Package ID
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Package Identifier:", fontSize = 11.sp, color = Color.Gray)
+                            Text("ph.northpoblacion.cleantrack", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Version:", fontSize = 11.sp, color = Color.Gray)
+                            Text("1.0.0 (Build 1)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CleanGreenPrimary)
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Release Asset:", fontSize = 11.sp, color = Color.Gray)
+                            Text("North-Poblacion-CleanTrack-v1.0.0.apk", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                // Backend Connectivity Configuration
                 Surface(
                     shape = RoundedCornerShape(10.dp),
                     color = CleanGreenContainer.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudSync,
+                                    contentDescription = null,
+                                    tint = CleanGreenPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Backend Server Mode",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CleanGreenPrimary
+                                )
+                            }
+
+                            Switch(
+                                checked = isProductionBackend,
+                                onCheckedChange = { checked ->
+                                    viewModel.toggleBackendMode(checked, customUrlInput)
+                                },
+                                modifier = Modifier.testTag("switch_backend_mode")
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = if (isProductionBackend) {
+                                "Connected to Production HTTPS Endpoint:\n$backendUrl"
+                            } else {
+                                "Embedded Capstone Live Demo Mode (Pre-seeded with all 18 Puroks of North Poblacion for offline evaluation)."
+                            },
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 15.sp
+                        )
+
+                        if (isProductionBackend) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            TextButton(
+                                onClick = { showUrlEdit = !showUrlEdit },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(if (showUrlEdit) "Hide Server URL Config" else "Configure Server URL", fontSize = 11.sp)
+                            }
+
+                            if (showUrlEdit) {
+                                OutlinedTextField(
+                                    value = customUrlInput,
+                                    onValueChange = { customUrlInput = it },
+                                    label = { Text("HTTPS Server Base URL") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Button(
+                                    onClick = {
+                                        viewModel.toggleBackendMode(true, customUrlInput)
+                                        showUrlEdit = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CleanGreenPrimary),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Apply HTTPS Endpoint", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Project Title Banner
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 1.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {

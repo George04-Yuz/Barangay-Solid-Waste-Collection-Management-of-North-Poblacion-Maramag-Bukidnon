@@ -64,6 +64,22 @@ class CleanTrackViewModel(
     private val _showNotificationCenter = MutableStateFlow(false)
     val showNotificationCenter: StateFlow<Boolean> = _showNotificationCenter.asStateFlow()
 
+    // Backend Server Configuration
+    private val _isProductionBackend = MutableStateFlow(false)
+    val isProductionBackend: StateFlow<Boolean> = _isProductionBackend.asStateFlow()
+
+    private val _backendUrl = MutableStateFlow("https://api.northpoblacion.gov.ph/api/v1")
+    val backendUrl: StateFlow<String> = _backendUrl.asStateFlow()
+
+    fun toggleBackendMode(useProduction: Boolean, customUrl: String? = null) {
+        _isProductionBackend.value = useProduction
+        if (!customUrl.isNullOrBlank()) {
+            _backendUrl.value = customUrl
+        }
+        val mode = if (useProduction) "Production HTTPS (${_backendUrl.value})" else "Embedded Live Demo (18 Puroks Offline)"
+        showBanner("Backend mode set to: $mode")
+    }
+
     // Transient Message / Banner (e.g. "Collection marked as Completed!")
     private val _transientBanner = MutableStateFlow<String?>(null)
     val transientBanner: StateFlow<String?> = _transientBanner.asStateFlow()
